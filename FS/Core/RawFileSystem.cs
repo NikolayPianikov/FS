@@ -1,26 +1,54 @@
+// ReSharper disable ClassNeverInstantiated.Global
+// ReSharper disable IdentifierTypo
 namespace FS.Core
 {
-    using System;
+    using System.Threading;
+    using Pure.DI;
 
-    internal sealed class RawFileSystem : IRawFileSystem
+    internal sealed class RawFileSystem :
+        IRawFileSystem,
+        ISettings<IRawFileSystem, RawFileSystemSettings>,
+        ICache,
+        IRawFileSystemStatistics
     {
+        private readonly ISettings<IBlockCalculator, BlockCalculatorSettings> _calculatorSettings;
         private readonly IBlockAllocationTable _table;
         private readonly IChainSplitter _splitter;
-        private readonly IWriter? _writer;
-        private readonly IReader? _reader;
-
-        public RawFileSystem(IBlockAllocationTable table, IChainSplitter splitter, RawFileSystemSettings settings)
+        private IWriter _writer;
+        private IReader _reader;
+        private volatile int _numberOfFiles;
+        
+        public RawFileSystem(
+            ISettings<IBlockCalculator, BlockCalculatorSettings> calculatorSettings,
+            IBlockAllocationTable table,
+            IBlockAllocationTableStatistics statistics,
+            IChainSplitter splitter,
+            [Tag(WellknownTag.NotInitialized)] IReader reader,
+            [Tag(WellknownTag.NotInitialized)] IWriter writer)
         {
+            _calculatorSettings = calculatorSettings;
             _table = table;
             _splitter = splitter;
+            _reader = reader;
+            _writer = writer;
+        }
+
+        public int NumberOfFiles => _numberOfFiles;
+        
+        public IRawFileSystem Apply(RawFileSystemSettings settings)
+        {
+            _calculatorSettings.Apply(new BlockCalculatorSettings(settings.BlockSize, settings.BlockCount));
             _writer = settings.Writer;
             _reader = settings.Reader;
+            _table.TryLoad(_reader);
+            return this;
         }
-        
+
         public bool TryCreateFile(out RawFile file)
         {
-            if (_table.CreateBlockChain(out var firstBlock))
+            if (_table.TryCreateBlockChain(out var firstBlock))
             {
+                Interlocked.Increment(ref _numberOfFiles);
                 file = new RawFile(firstBlock);
                 return true;
             }
@@ -29,18 +57,23 @@ namespace FS.Core
             return false;
         }
 
-        public void DeleteFile(RawFile file)
+        public bool TryDeleteFile(RawFile file)
         {
             var firstBlock = file.FirstBlock;
-            _table.ReleaseBlockChain(firstBlock);
+            // ReSharper disable once InvertIf
+            if (_table.TryReleaseBlockChain(firstBlock))
+            {
+                Interlocked.Decrement(ref _numberOfFiles);
+                return true;
+            }
+
+            return false;
         }
         
-        public IReader CreateReader(RawFile file) => new BlockReader(file.FirstBlock, _splitter, GuardInitialized(_reader));
+        public IReader CreateReader(RawFile file) => new BlockReader(file.FirstBlock, _splitter, _reader);
 
-        public IWriter CreateWriter(RawFile file) => new BlockWriter(file.FirstBlock, _table, _splitter, GuardInitialized(_writer));
+        public IWriter CreateWriter(RawFile file) => new BlockWriter(file.FirstBlock, _splitter, _writer);
 
-        private static T GuardInitialized<T>(T? instance)
-            where T: class =>
-            instance ?? throw new InvalidOperationException("Not initialized");
+        public bool TryFlush() => _table.TrySave(_writer);
     }
 }

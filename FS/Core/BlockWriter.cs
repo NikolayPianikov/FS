@@ -6,14 +6,12 @@ namespace FS.Core
     internal sealed class BlockWriter: IWriter
     {
         private readonly Block _firstBlock;
-        private readonly IBlockAllocationTable _table;
         private readonly IChainSplitter _splitter;
         private readonly IWriter _writer;
         
-        public BlockWriter(Block firstBlock, IBlockAllocationTable table, IChainSplitter splitter, IWriter writer)
+        public BlockWriter(Block firstBlock, IChainSplitter splitter, IWriter writer)
         {
             _firstBlock = firstBlock;
-            _table = table;
             _splitter = splitter;
             _writer = writer;
         }
@@ -51,9 +49,5 @@ namespace FS.Core
 
             return position;
         }
-
-        public bool TryFlush() => _table.TrySave(_writer) && _writer.TryFlush();
-
-        public Task<bool> TryFlushAsync() => Task.FromResult(_table.TrySave(_writer));
     }
 }

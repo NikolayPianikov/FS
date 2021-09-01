@@ -8,9 +8,5 @@ namespace FS
         int Write(ReadOnlySpan<byte> source, long destinationPosition);
         
         ValueTask<int> WriteAsync(ReadOnlyMemory<byte> source, long destinationPosition);
-        
-        bool TryFlush();
-        
-        Task<bool> TryFlushAsync();
     }
 }

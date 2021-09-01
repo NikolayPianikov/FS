@@ -24,17 +24,5 @@ namespace FS.Core
             await _stream.WriteAsync(source);
             return source.Length;
         }
-
-        public bool TryFlush()
-        {
-            _stream.Flush();
-            return true;
-        }
-
-        public async Task<bool> TryFlushAsync()
-        {
-            await _stream.FlushAsync();
-            return true;
-        }
     }
 }

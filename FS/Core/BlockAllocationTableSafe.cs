@@ -2,13 +2,19 @@ namespace FS.Core
 {
     using Pure.DI;
 
-    internal sealed class BlockAllocationTableSafe: IBlockAllocationTable
+    internal sealed class BlockAllocationTableSafe: IBlockAllocationTable, IBlockAllocationTableStatistics
     {
         private readonly IBlockAllocationTable _table;
+        private readonly IBlockAllocationTableStatistics _statistics;
         private readonly object _lockObject = new();
 
-        public BlockAllocationTableSafe([Tag("base")] IBlockAllocationTable table) =>
+        public BlockAllocationTableSafe(
+            [Tag(WellknownTag.Base)] IBlockAllocationTable table,
+            [Tag(WellknownTag.Base)] IBlockAllocationTableStatistics statistics)
+        {
             _table = table;
+            _statistics = statistics;
+        }
 
         public void Dispose()
         {
@@ -18,11 +24,11 @@ namespace FS.Core
             }
         }
 
-        public bool CreateBlockChain(out Block firstBlock)
+        public bool TryCreateBlockChain(out Block firstBlock)
         {
             lock (_lockObject)
             {
-                return _table.CreateBlockChain(out firstBlock);
+                return _table.TryCreateBlockChain(out firstBlock);
             }
         }
 
@@ -34,11 +40,11 @@ namespace FS.Core
             }
         }
 
-        public void ReleaseBlockChain(Block firstBlock)
+        public bool TryReleaseBlockChain(Block firstBlock)
         {
             lock (_lockObject)
             {
-                _table.ReleaseBlockChain(firstBlock);
+                return _table.TryReleaseBlockChain(firstBlock);
             }
         }
 
@@ -55,6 +61,28 @@ namespace FS.Core
             lock (_lockObject)
             {
                 return _table.TryLoad(reader);
+            }
+        }
+
+        public int NumberOfSectorsUsed
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _statistics.NumberOfSectorsUsed;
+                }
+            }
+        }
+
+        public int NumberOfBlocksUsed
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _statistics.NumberOfBlocksUsed;
+                }
             }
         }
     }

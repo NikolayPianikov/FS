@@ -48,7 +48,6 @@ namespace FS.Tests.Integration
 
                 // When
                 writer.Write(data.Span, Position);
-                writer.TryFlush();
                 var result = reader.Read(Position, destinationBuffer.Memory.Span);
 
                 // Then
@@ -71,7 +70,6 @@ namespace FS.Tests.Integration
 
                 // When
                 await writer.WriteAsync(data, Position);
-                await writer.TryFlushAsync();
                 var result = await reader.ReadAsync(Position, destinationBuffer.Memory);
 
                 // Then

@@ -23,9 +23,5 @@ namespace FS.Core
 
         public ValueTask<int> WriteAsync(ReadOnlyMemory<byte> source, long destinationPosition) =>
             new(Write(source.Span, destinationPosition));
-
-        public bool TryFlush() => true;
-
-        public Task<bool> TryFlushAsync() => Task.FromResult(true);
     }
 }

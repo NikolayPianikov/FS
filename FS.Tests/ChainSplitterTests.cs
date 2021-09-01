@@ -92,9 +92,9 @@ namespace FS.Tests
 
             public void Dispose() => throw new System.NotImplementedException();
 
-            public bool CreateBlockChain(out Block firstBlock) => throw new System.NotImplementedException();
+            public bool TryCreateBlockChain(out Block firstBlock) => throw new System.NotImplementedException();
 
-            public void ReleaseBlockChain(Block firstBlock) => throw new System.NotImplementedException();
+            public bool TryReleaseBlockChain(Block firstBlock) => throw new System.NotImplementedException();
 
             public bool TrySave(IWriter writer) => throw new System.NotImplementedException();
 

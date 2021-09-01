@@ -85,7 +85,7 @@ namespace FS.Tests
             }
         }
 
-        private static BlockCalculator CreateInstance() =>
-            new(BlockSize, BlockCount);
+        private static IBlockCalculator CreateInstance() =>
+            new BlockCalculator(BlockSize, BlockCount);
     }
 }

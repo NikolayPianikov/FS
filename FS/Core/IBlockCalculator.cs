@@ -1,8 +1,6 @@
 // ReSharper disable BuiltInTypeReferenceStyle
 namespace FS.Core
 {
-    using Position = System.Int64;
-
     internal interface IBlockCalculator
     {
         int BlockSize { get; }
@@ -11,8 +9,8 @@ namespace FS.Core
 
         int SectorSize { get; }
 
-        Position BlockToPosition(Block block);
+        long BlockToPosition(Block block);
         
-        Position SectorToPosition(int sectorId);
+        long SectorToPosition(int sectorId);
     }
 }

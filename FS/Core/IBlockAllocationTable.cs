@@ -4,11 +4,11 @@ namespace FS.Core
 
     internal interface IBlockAllocationTable: IDisposable
     {
-        bool CreateBlockChain(out Block firstBlock);
+        bool TryCreateBlockChain(out Block firstBlock);
         
         bool TryGetNextBlockInChain(Block currentBlock, out Block nextBlock, bool expansion);
         
-        void ReleaseBlockChain(Block firstBlock);
+        bool TryReleaseBlockChain(Block firstBlock);
         
         bool TrySave(IWriter writer);
 

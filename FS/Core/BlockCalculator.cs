@@ -4,15 +4,17 @@ namespace FS.Core
     using System;
     using System.Runtime.InteropServices;
 
-    internal sealed class BlockCalculator : IBlockCalculator
+    internal sealed class BlockCalculator : IBlockCalculator, ISettings<IBlockCalculator, BlockCalculatorSettings>
     {
-        private readonly int _headerSize;
+        public const int DefaultBlockSize = 8192;
+        public const int DefaultBlockCount = 4096; 
+        private int _headerSize;
 
-        public BlockCalculator(RawFileSystemSettings settings)
-            :this(settings.BlockSize, settings.BlockCount)
-        { }
+        public BlockCalculator(int blockSize = DefaultBlockSize, int blockCount = DefaultBlockCount) => Setup(blockSize, blockCount);
 
-        public BlockCalculator(int blockSize, int blockCount)
+        public IBlockCalculator Apply(BlockCalculatorSettings settings) => Setup(settings.BlockSize, settings.BlockCount);
+
+        private IBlockCalculator Setup(int blockSize, int blockCount)
         {
             if (blockSize <= 0) throw new ArgumentOutOfRangeException(nameof(blockSize));
             if (blockCount <= 0) throw new ArgumentOutOfRangeException(nameof(blockCount));
@@ -24,13 +26,15 @@ namespace FS.Core
                 var dataSize = blockCount * blockSize;
                 SectorSize = _headerSize + dataSize;
             }
+
+            return this;
         }
 
-        public int BlockSize { get; }
+        public int BlockSize { get; private set; }
+
+        public int BlockCount { get; private set; }
         
-        public int BlockCount { get; }
-        
-        public int SectorSize { get; }
+        public int SectorSize { get; private set; }
         
         public long BlockToPosition(Block block)
         {

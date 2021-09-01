@@ -7,7 +7,9 @@ namespace FS.Core
     using System.Diagnostics;
     using System.Runtime.InteropServices;
 
-    internal sealed class BlockAllocationTable: IBlockAllocationTable
+    internal sealed class BlockAllocationTable:
+        IBlockAllocationTable,
+        IBlockAllocationTableStatistics
     {
         // ReSharper disable once ArrangeDefaultValueWhenTypeEvident
         // ReSharper disable once MemberCanBePrivate.Global
@@ -21,9 +23,9 @@ namespace FS.Core
             _calculator = calculator;
         }
 
-        internal int SectorsCount => _sectors.Count;
+        public int NumberOfSectorsUsed => _sectors.Count;
 
-        internal int BlocksCount
+        public int NumberOfBlocksUsed
         {
             get
             {
@@ -31,9 +33,9 @@ namespace FS.Core
                 // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
                 foreach (var sector in _sectors)
                 {
-                    foreach (var position in sector.Data.Span)
+                    foreach (var block in sector.Data.Span)
                     {
-                        if (!position.Equals(Block.Empty))
+                        if (!block.Equals(Block.Empty))
                         {
                             count++;
                         }
@@ -44,7 +46,7 @@ namespace FS.Core
             }
         }
 
-        public bool CreateBlockChain(out Block firstBlock) => TryReserveBlock(out firstBlock);
+        public bool TryCreateBlockChain(out Block firstBlock) => TryReserveBlock(out firstBlock);
 
         public bool TryGetNextBlockInChain(Block currentBlock, out Block nextBlock, bool expansion)
         {
@@ -69,7 +71,7 @@ namespace FS.Core
             return true;
         }
 
-        public void ReleaseBlockChain(Block firstBlock)
+        public bool TryReleaseBlockChain(Block firstBlock)
         {
             var currentBlock = firstBlock;
             while (TryGetNextBlockInChain(currentBlock, out var nextBlock, false))
@@ -80,14 +82,39 @@ namespace FS.Core
             }
             
             GuardBlockNotEmpty(ref currentBlock);
+            if (GetNextBlock(ref currentBlock).Equals(Block.Empty))
+            {
+                return false;
+            }
+            
             SetNextBlock(ref currentBlock, Block.Empty);
+            return true;
         }
 
         public bool TrySave(IWriter writer)
         {
-            for (var sectorId = 0; sectorId < _sectors.Count; sectorId++)
+            var hasBusy = false;
+            for (var sectorId = _sectors.Count - 1; sectorId >= 0; sectorId--)
             {
                 var sector = _sectors[sectorId];
+                if (!hasBusy)
+                {
+                    foreach (var block in sector.Data.Span)
+                    {
+                        // ReSharper disable once InvertIf
+                        if (!block.Equals(Block.Empty))
+                        {
+                            hasBusy = true;
+                            break;
+                        }
+                    }
+
+                    if (!hasBusy)
+                    {
+                        _sectors.RemoveAt(sectorId);
+                    }
+                }
+                
                 if (!sector.IsDirty)
                 {
                     continue;
@@ -162,37 +189,37 @@ namespace FS.Core
         [Conditional("DEBUG")]
         private void GuardBlockNotEmpty(ref Block block)
         {
-            if (GetNextBlock(block).Equals(Block.Empty))
+            if (GetNextBlock(ref block).Equals(Block.Empty))
             {
                 throw new ArgumentOutOfRangeException(nameof(block), $"{block} points to an empty block.");
             }
         }
 
-        internal Block GetNextBlock(Block block)
+        internal Block GetNextBlock(ref Block block)
         {
             GuardBlock(ref block);
             return _sectors[block.SectorId].Data.Span[block.BlockId];
         }
 
-        private void SetNextBlock(ref Block block, Block position)
+        private void SetNextBlock(ref Block block, Block nextBlock)
         {
             GuardBlock(ref block);
             var sector = _sectors[block.SectorId];
-            sector.Data.Span[block.BlockId] = position;
+            sector.Data.Span[block.BlockId] = nextBlock;
             sector.IsDirty = true;
         }
 
         private bool TryGetNextBlockInChain(ref Block currentBlock, out Block nextBlock)
         {
             GuardBlock(ref currentBlock);
-            var nextPosition = GetNextBlock(currentBlock);
-            if (nextPosition.Equals(Block.Empty) || nextPosition.Equals(Block.Last))
+            nextBlock = GetNextBlock(ref currentBlock);
+            // ReSharper disable once InvertIf
+            if (nextBlock.Equals(Block.Empty) || nextBlock.Equals(Block.Last))
             {
                 nextBlock = default;
                 return false;
             }
-            
-            nextBlock = nextPosition;
+
             return true;
         }
         
@@ -232,7 +259,7 @@ namespace FS.Core
             return true;
         }
         
-        private struct Sector
+        private class Sector
         {
             public readonly Memory<Block> Data;
             public readonly IDisposable Recourse;

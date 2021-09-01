@@ -1,5 +1,7 @@
 namespace FS
 {
+    using Core;
+
     public readonly struct RawFileSystemSettings
     {
         public readonly IReader Reader;
@@ -10,8 +12,8 @@ namespace FS
         public RawFileSystemSettings(
             IReader reader,
             IWriter writer,
-            int blockSize = 8192,
-            int blockCount = 4096)
+            int blockSize = BlockCalculator.DefaultBlockSize,
+            int blockCount = BlockCalculator.DefaultBlockCount)
         {
             Reader = reader;
             Writer = writer;
