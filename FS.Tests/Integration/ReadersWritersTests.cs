@@ -8,6 +8,8 @@ namespace FS.Tests.Integration
     using Core;
     using Shouldly;
     using Xunit;
+    using StreamReader = Core.StreamReader;
+    using StreamWriter = Core.StreamWriter;
 
     public class ReadersWritersTests
     {
@@ -21,8 +23,8 @@ namespace FS.Tests.Integration
             var tempFile = Path.GetTempFileName();
             var tempFileToken = Disposable.Create(() => File.Delete(tempFile));
             var stream = File.Open(tempFile, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
-            var fileWriter = new FileWriter(stream);
-            var fileReader = new FileReader(stream);
+            var fileWriter = new StreamWriter(stream);
+            var fileReader = new StreamReader(stream);
             yield return new object[] { fileReader, fileWriter, Disposable.Create(stream, tempFileToken) };
 
             // Memory

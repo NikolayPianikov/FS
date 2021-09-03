@@ -49,5 +49,11 @@ namespace FS.Core
 
             return position;
         }
+
+        public void Flush() => _writer.Flush();
+
+        public Task FlushAsync() => _writer.FlushAsync();
+
+        public void Dispose() => _writer.Dispose();
     }
 }

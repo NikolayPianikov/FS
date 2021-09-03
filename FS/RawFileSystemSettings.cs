@@ -2,21 +2,18 @@ namespace FS
 {
     using Core;
 
-    public readonly struct RawFileSystemSettings
+    public readonly struct RawFileSystemSettings<T>
     {
-        public readonly IReader Reader;
-        public readonly IWriter Writer;
+        public readonly T File;
         public readonly int BlockSize;
         public readonly int BlockCount;
 
         public RawFileSystemSettings(
-            IReader reader,
-            IWriter writer,
+            T file,
             int blockSize = BlockCalculator.DefaultBlockSize,
             int blockCount = BlockCalculator.DefaultBlockCount)
         {
-            Reader = reader;
-            Writer = writer;
+            File = file;
             BlockSize = blockSize;
             BlockCount = blockCount;
         }

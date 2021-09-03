@@ -5,42 +5,40 @@ namespace FS.Core
     using System.Threading;
     using Pure.DI;
 
-    internal sealed class RawFileSystem :
+    internal sealed class RawFileSystem<T> :
         IRawFileSystem,
-        ISettings<IRawFileSystem, RawFileSystemSettings>,
-        ICache,
+        ISettings<IRawFileSystem, RawFileSystemSettings<T>>,
         IRawFileSystemStatistics
     {
         private readonly ISettings<IBlockCalculator, BlockCalculatorSettings> _calculatorSettings;
         private readonly IBlockAllocationTable _table;
         private readonly IChainSplitter _splitter;
-        private IWriter _writer;
-        private IReader _reader;
+        private readonly IReaderWriterFactory<T> _readerWriterFactory;
+        private T _file;
         private volatile int _numberOfFiles;
-        
+
         public RawFileSystem(
+            [Tag(WellknownTag.Default)] T defaultFile,
             ISettings<IBlockCalculator, BlockCalculatorSettings> calculatorSettings,
             IBlockAllocationTable table,
-            IBlockAllocationTableStatistics statistics,
             IChainSplitter splitter,
-            [Tag(WellknownTag.NotInitialized)] IReader reader,
-            [Tag(WellknownTag.NotInitialized)] IWriter writer)
+            IReaderWriterFactory<T> readerWriterFactory)
         {
+            _file = defaultFile;
             _calculatorSettings = calculatorSettings;
             _table = table;
             _splitter = splitter;
-            _reader = reader;
-            _writer = writer;
+            _readerWriterFactory = readerWriterFactory;
         }
 
         public int NumberOfFiles => _numberOfFiles;
         
-        public IRawFileSystem Apply(RawFileSystemSettings settings)
+        public IRawFileSystem Apply(RawFileSystemSettings<T> settings)
         {
+            _file = settings.File;
             _calculatorSettings.Apply(new BlockCalculatorSettings(settings.BlockSize, settings.BlockCount));
-            _writer = settings.Writer;
-            _reader = settings.Reader;
-            _table.TryLoad(_reader);
+            using var reader = _readerWriterFactory.CreateReader(_file);
+            _table.TryLoad(reader);
             return this;
         }
 
@@ -70,10 +68,21 @@ namespace FS.Core
             return false;
         }
         
-        public IReader CreateReader(RawFile file) => new BlockReader(file.FirstBlock, _splitter, _reader);
+        public IReader CreateReader(RawFile file) => new BlockReader(file.FirstBlock, _splitter, _readerWriterFactory.CreateReader(_file));
 
-        public IWriter CreateWriter(RawFile file) => new BlockWriter(file.FirstBlock, _splitter, _writer);
+        public IWriter CreateWriter(RawFile file) => new BlockWriter(file.FirstBlock, _splitter, _readerWriterFactory.CreateWriter(_file));
 
-        public bool TryFlush() => _table.TrySave(_writer);
+        public bool TryFlush()
+        {
+            using var writer = _readerWriterFactory.CreateWriter(_file);
+            try
+            {
+                return _table.TrySave(writer);
+            }
+            finally
+            {
+                writer.Flush();
+            }
+        }
     }
 }

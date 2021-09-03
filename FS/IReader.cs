@@ -3,7 +3,7 @@ namespace FS
     using System;
     using System.Threading.Tasks;
 
-    public interface IReader
+    public interface IReader: IDisposable
     {
         int Read(long sourcePosition, Span<byte> destination);
 

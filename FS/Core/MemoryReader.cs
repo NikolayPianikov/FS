@@ -23,5 +23,7 @@ namespace FS.Core
 
         public ValueTask<int> ReadAsync(long sourcePosition, Memory<byte> destination) =>
             new(Read(sourcePosition, destination.Span));
+
+        public void Dispose() { }
     }
 }

@@ -23,5 +23,11 @@ namespace FS.Core
 
         public ValueTask<int> WriteAsync(ReadOnlyMemory<byte> source, long destinationPosition) =>
             new(Write(source.Span, destinationPosition));
+
+        public void Flush() { }
+
+        public Task FlushAsync() => Task.CompletedTask;
+
+        public void Dispose() { }
     }
 }

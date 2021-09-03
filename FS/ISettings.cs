@@ -1,3 +1,4 @@
+// ReSharper disable UnusedMethodReturnValue.Global
 namespace FS
 {
     // ReSharper disable once IdentifierTypo

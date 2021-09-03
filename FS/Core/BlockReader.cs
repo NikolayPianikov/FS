@@ -49,5 +49,7 @@ namespace FS.Core
 
             return position;
         }
+
+        public void Dispose() => _reader.Dispose();
     }
 }
