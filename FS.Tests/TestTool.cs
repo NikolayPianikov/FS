@@ -6,6 +6,7 @@ namespace FS.Tests
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using Core;
     using Shouldly;
 
     internal static class TestTool
@@ -69,33 +70,45 @@ namespace FS.Tests
 
             return sb.ToString();
         }
-        
-        public static void ReadAndWriteFile(IReader reader, IWriter writer, int position, int size)
+
+        public static (Memory<byte> Source, Memory<byte> Destination, IDisposable Resource) CreateBuffers(int size)
         {
             using var sourceBuffer = MemoryPool<byte>.Shared.Rent(size);
-            var data = sourceBuffer.Memory[..size];
-            data.Fill();
-            writer.Write(data.Span, position).ShouldBe(size);
-            writer.Flush();
+            var source = sourceBuffer.Memory[..size];
+            source.Span.Clear();
+            source.Fill();
 
             using var destinationBuffer = MemoryPool<byte>.Shared.Rent(size);
             var destination = destinationBuffer.Memory[..size];
-            reader.Read(position, destination.Span).ShouldBe(size, "Expected: " + data.Span.ConvertToString() + ", actual: " + destination.Span.ConvertToString());
-            data.ShouldBe(destination);
+            destination.Span.Clear();
+
+            return (source, destination, Disposable.Create(sourceBuffer, destinationBuffer));
+        }
+        
+        public static void ReadAndWriteFile(IReader reader, IWriter writer, int position, int size)
+        {
+            var (source, destination, resource) = CreateBuffers(size);
+            using (resource)
+            {
+                writer.Write(source.Span, position).ShouldBe(size);
+                writer.Flush();
+
+                reader.Read(position, destination.Span).ShouldBe(size, "Expected: " + destination.Span.ConvertToString() + ", actual: " + destination.Span.ConvertToString());
+                source.Span.SequenceEqual(destination.Span);
+            }
         }
         
         public static async Task ReadAndWriteFileAsync(IReader reader, IWriter writer, int position, int size)
         {
-            using var sourceBuffer = MemoryPool<byte>.Shared.Rent(size);
-            var data = sourceBuffer.Memory[..size];
-            data.Fill();
-            (await writer.WriteAsync(data, position)).ShouldBe(size);
-            await writer.FlushAsync();
+            var (source, destination, resource) = CreateBuffers(size);
+            using (resource)
+            {
+                (await writer.WriteAsync(source, position)).ShouldBe(size);
+                await writer.FlushAsync();
 
-            using var destinationBuffer = MemoryPool<byte>.Shared.Rent(size);
-            var destination = destinationBuffer.Memory[..size];
-            (await reader.ReadAsync(position, destination)).ShouldBe(size, "Expected: " + data.Span.ConvertToString() + ", actual: " + destination.Span.ConvertToString());
-            data.ShouldBe(destination);
+                (await reader.ReadAsync(position, destination)).ShouldBe(size, "Expected: " + destination.Span.ConvertToString() + ", actual: " + destination.Span.ConvertToString());
+                source.ShouldBe(destination);
+            }
         }
     }
 }

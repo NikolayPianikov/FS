@@ -29,8 +29,10 @@ namespace FS.Tests.Integration
 
             // Memory
             var buffer = MemoryPool<byte>.Shared.Rent(DataSize);
-            var memoryWriter = new MemoryWriter(buffer.Memory[..DataSize]);
-            var memoryReader = new MemoryReader(buffer.Memory[..DataSize]);
+            var data = buffer.Memory[..DataSize];
+            data.Span.Clear();
+            var memoryWriter = new MemoryWriter(data);
+            var memoryReader = new MemoryReader(data);
             yield return new object[] { memoryReader, memoryWriter, buffer };
             
             // Aaa
@@ -45,16 +47,19 @@ namespace FS.Tests.Integration
                 // Given
                 using var sourceBuffer = MemoryPool<byte>.Shared.Rent(Size);
                 using var destinationBuffer = MemoryPool<byte>.Shared.Rent(Size);
-                var data = sourceBuffer.Memory[..Size];
-                data.Fill();
+                var source = sourceBuffer.Memory[..Size];
+                source.Span.Clear();
+                source.Fill();
+                var destination = destinationBuffer.Memory[..Size];
+                destination.Span.Clear();
 
                 // When
-                writer.Write(data.Span, Position);
-                var result = reader.Read(Position, destinationBuffer.Memory.Span);
+                writer.Write(source.Span, Position);
+                var result = reader.Read(Position, destination.Span);
 
                 // Then
                 result.ShouldBe(Size);
-                data.ShouldBe(destinationBuffer.Memory[..Size]);
+                source.ShouldBe(destination);
             }
         }
 
@@ -69,14 +74,16 @@ namespace FS.Tests.Integration
                 using var destinationBuffer = MemoryPool<byte>.Shared.Rent(Size);
                 var data = sourceBuffer.Memory[..Size];
                 data.Fill();
+                var destination = destinationBuffer.Memory[..Size];
+                destination.Span.Clear();
 
                 // When
                 await writer.WriteAsync(data, Position);
-                var result = await reader.ReadAsync(Position, destinationBuffer.Memory);
+                var result = await reader.ReadAsync(Position, destination);
 
                 // Then
                 result.ShouldBe(Size);
-                data.ShouldBe(destinationBuffer.Memory[..Size]);
+                data.ShouldBe(destination);
             }
         }
 

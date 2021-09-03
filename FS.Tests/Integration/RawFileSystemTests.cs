@@ -6,18 +6,15 @@ namespace FS.Tests.Integration
     using Core;
     using Shouldly;
     using Xunit;
-    using Xunit.Abstractions;
 
     public class RawFileSystemTests: IDisposable
     {
-        private readonly ITestOutputHelper _output;
         private readonly string _tempFile;
         private const int Size = 256000;
         private const int Position = 123;
 
-        public RawFileSystemTests(ITestOutputHelper output)
+        public RawFileSystemTests()
         {
-            _output = output;
             _tempFile = Path.GetTempFileName();
         }
 
@@ -144,15 +141,16 @@ namespace FS.Tests.Integration
         {
             // Given
             var root = CreateInstance(new RawFileSystemSettings<string>(_tempFile, 2, 3));
+            root.FileSystemStatistics.NumberOfFiles.ShouldBe(0);
             root.FileSystem.TryCreateFile(out var file).ShouldBeTrue();
             using var writer = root.FileSystem.CreateWriter(file);
             using var reader = root.FileSystem.CreateReader(file);
             TestTool.ReadAndWriteFile(reader, writer, 1, 8);
             root.FileSystem.TryDeleteFile(file);
-
+            
             // When
             root.FileSystem.TryCreateFile(out file);
-            root.FileSystem.TryFlush();
+            //root.FileSystem.TryFlush();
             using var writer2 = root.FileSystem.CreateWriter(file);
             using var reader2 = root.FileSystem.CreateReader(file);
             TestTool.ReadAndWriteFile(reader2, writer2, 1, 8);
@@ -199,7 +197,6 @@ namespace FS.Tests.Integration
             TestTool.Parallelize(() =>
             {
                 root.FileSystem.TryCreateFile(out var file).ShouldBeTrue();
-                _output.WriteLine(file.ToString());
                 using var writer = root.FileSystem.CreateWriter(file);
                 using var reader = root.FileSystem.CreateReader(file);
                 TestTool.ReadAndWriteFile(reader, writer, 1, 8);

@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+option csharp_namespace = "FS.Dto";
+
+package FS;
+
+enum EntityType {
+    File = 0;
+    Directory = 1;
+}
+
+message Entity {
+  uint32 sectorId = 1;
+  uint32 blockId = 2;
+  uint64 size = 3;
+  EntityType type = 4;
+  string name = 5;
+}
+
+message DirectoryData {
+  repeated Entity Entities = 1;
+}

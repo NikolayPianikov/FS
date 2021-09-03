@@ -2,7 +2,7 @@ namespace FS.Core
 {
     using System.IO;
 
-    internal class FileReaderWriterFactory: IReaderWriterFactory<string>
+    internal sealed class FileReaderWriterFactory: IReaderWriterFactory<string>
     {
         public IReader CreateReader(string file) => new StreamReader(CreateStream(file));
 
